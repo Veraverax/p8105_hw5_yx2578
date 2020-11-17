@@ -146,3 +146,43 @@ We can tell from the spaghetti plot above that the values of measurement in the 
 
 ## Problem 3
 
+##### Define function to generate sample dataset and perform ttest
+
+```{r}
+n = 30
+sigma = 5
+
+one_sample_ttest = function(mu, h_null) {
+  
+  sample_data = tibble(
+    x = rnorm(n=30, mean = mu, sd = 5),
+  )
+  
+  sample_data %>% 
+    t.test(mu = h_null) %>%
+    broom::tidy()
+}
+
+
+```
+
+##### Set mu=0 and generate 5000 datasets from the model to perform ttest
+
+```{r}
+output_mu_0 = vector("list", 5000)
+
+for (i in 1:5000) {
+  output_mu_0[[i]] = one_sample_ttest(mu = 0, h_null = 0)
+}
+
+mu_0_results = bind_rows(output_mu_0)
+```
+
+```{r}
+for (k in 1:6) {
+  output_mu_[[i]] = one_sample_ttest(mu = k, h_null = 0)
+}
+
+mu_0_results = bind_rows(output_mu_0)
+```
+
