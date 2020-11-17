@@ -129,6 +129,8 @@ p2_tidy_data =
                names_to = "week",
                values_to = "value") %>%
   mutate(week = gsub("week_", "", week))
+
+p2_tidy_data
 ```
 
 #####  Make a spaghetti plot showing observations on each subject over time
@@ -146,7 +148,7 @@ We can tell from the spaghetti plot above that the values of measurement in the 
 
 ## Problem 3
 
-##### Define function to generate sample dataset and perform ttest
+##### Define function *one_sample_ttest* to generate sample dataset and perform one ttest
 
 ```{r}
 n = 30
@@ -162,27 +164,104 @@ one_sample_ttest = function(mu, h_null) {
     t.test(mu = h_null) %>%
     broom::tidy()
 }
-
-
 ```
 
-##### Set mu=0 and generate 5000 datasets from the model to perform ttest
+##### Define function *one_sample_ttest* to generate a df for repeated 5000 tests for any given normal mu = k
 
 ```{r}
-output_mu_0 = vector("list", 5000)
+repeat_5000_ttest = function(k) {
+  
+output_ttest = vector("list", 5000)
 
 for (i in 1:5000) {
-  output_mu_0[[i]] = one_sample_ttest(mu = 0, h_null = 0)
+  output_ttest[[i]] = one_sample_ttest(mu = k, h_null = 0)
 }
 
-mu_0_results = bind_rows(output_mu_0)
+ttest_results = bind_rows(output_ttest)
+}
 ```
+
+##### Set mu=0 and perform the result
 
 ```{r}
-for (k in 1:6) {
-  output_mu_[[i]] = one_sample_ttest(mu = k, h_null = 0)
-}
+result_0 = 
+  repeat_5000_ttest(k=0) %>%
+  mutate (mu = 0) %>%
+  select(mu, estimate:alternative) %>%
+  mutate(decision = case_when(p.value < 0.05 ~ "rej", p.value >=0.05 ~ "fail to rej"))
 
-mu_0_results = bind_rows(output_mu_0)
+result_0
 ```
 
+##### Repeat the test above for mu={1,2,3,4,5,6} and generate a result summary dataframe with decision with regards to the null hypothesis
+
+```{r}
+result_1to6 = 
+  tibble(mu = c(1, 2, 3, 4, 5, 6)) %>% 
+  mutate(
+    results = map(.x = mu, ~repeat_5000_ttest(k=.x))
+    )
+
+result_summ = 
+  result_1to6 %>% 
+  unnest(c(mu, results)) %>%
+  mutate(decision = case_when(p.value < 0.05 ~ "rej", p.value >=0.05 ~ "fail to rej"))
+
+result_summ
+```
+
+
+##### Make a plot showing the proportion of times the null was rejected and value of mu
+
+```{r, message = FALSE, error= FALSE}
+result_summ %>%
+  group_by(mu) %>%
+  summarize(
+    n = n(),
+    rej_rate = sum(p.value < 0.05)/n) %>% 
+  ggplot(aes(x = mu, y = rej_rate)) +
+  geom_point() +
+    labs(x = "true mean",
+         y = "rejection rate") + 
+  xlim(0, 6) + 
+  ylim(0, 1)
+```
+
+Based on the plot above, as effect size (the difference between true mean and null value) increases, the proportion of times the null was rejected also increases, which means the power of the test increases.
+
+##### Plot describing sample mean and true mean
+
+```{r, message = FALSE, error= FALSE}
+library("patchwork")
+
+p1 <-  
+  result_summ %>%
+  group_by(mu) %>%
+  summarize(
+    avg_mu_hat = mean(estimate)) %>% 
+  ggplot(aes(x = mu, avg_mu_hat)) +
+  geom_point() +
+    labs(x = "true mean",
+         y = "average of estimate",
+         title = "All samples") +
+  xlim(0, 6) + 
+  ylim(0, 6)
+
+p2 <-  
+  result_summ %>%
+  group_by(mu) %>%
+  filter(decision == "rej") %>%
+  summarize(
+    avg_mu_hat = mean(estimate)) %>% 
+  ggplot(aes(x = mu, avg_mu_hat)) +
+  geom_point() +
+  labs(x = "true mean",
+       y = "average of estimate",
+       title = "Samples with rejection of null hypothesis")+
+  xlim(0, 6) + 
+  ylim(0, 6)
+
+p1 + p2
+```
+
+In the left plot, where all samples were included in the plot, we can tell that the average estimate is the same as the true mean. This holds true according to the CTL. In the right plot, however, the average of estimate is quite different from the true mean when the power is relatively low (also cross comparing to the power plot). As power increases, the average of estimate gets closer to the true mean among the samples where the null hypothesis is rejected.
