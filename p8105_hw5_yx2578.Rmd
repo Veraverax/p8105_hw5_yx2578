@@ -196,14 +196,14 @@ result_0
 ##### Repeat the test above for mu={1,2,3,4,5,6} and generate a result summary dataframe with decision with regards to the null hypothesis
 
 ```{r}
-result_1to6 = 
-  tibble(mu = c(1, 2, 3, 4, 5, 6)) %>% 
+result_0to6 = 
+  tibble(mu = c(0, 1, 2, 3, 4, 5, 6)) %>% 
   mutate(
     results = map(.x = mu, ~repeat_5000_ttest(k=.x))
     )
 
 result_summ = 
-  result_1to6 %>% 
+  result_0to6 %>% 
   unnest(c(mu, results)) %>%
   mutate(decision = case_when(p.value < 0.05 ~ "rej", p.value >=0.05 ~ "fail to rej"))
 
@@ -227,7 +227,7 @@ result_summ %>%
   ylim(0, 1)
 ```
 
-Based on the plot above, as effect size (the difference between true mean and null value) increases, the proportion of times the null was rejected also increases, which means the power of the test increases.
+Based on the plot above, as effect size (the difference between true mean and null value) increases, the confidence to reject the null hypothesis also increases, and the proportion of times the null was rejected also increases, which means the power of the test increases.
 
 ##### Plot describing sample mean and true mean
 
@@ -243,9 +243,8 @@ p1 <-
   geom_point() +
     labs(x = "true mean",
          y = "average of estimate",
-         title = "All samples") +
-  xlim(0, 6) + 
-  ylim(0, 6)
+         title = "All samples") 
+
 
 p2 <-  
   result_summ %>%
@@ -257,11 +256,14 @@ p2 <-
   geom_point() +
   labs(x = "true mean",
        y = "average of estimate",
-       title = "Samples with rejection of null hypothesis")+
-  xlim(0, 6) + 
-  ylim(0, 6)
+       title = "Samples with rejection of null hypothesis")
 
 p1 + p2
 ```
 
-In the left plot, where all samples were included in the plot, we can tell that the average estimate is the same as the true mean. This holds true according to the CTL. In the right plot, however, the average of estimate is quite different from the true mean when the power is relatively low (also cross comparing to the power plot). As power increases, the average of estimate gets closer to the true mean among the samples where the null hypothesis is rejected.
+* In the left plot, where all samples were included in the plot, we can tell that the average estimate is the same as the true mean. This holds true according to the CTL. 
+
+* In the right plot, we see that the average estimate of true mean = 0 is 0 within the rejected null subset, this is because the values we reject are randomly distributed above or below 0. However, the average of estimate is quite different from the true mean when it's greater than 0.
+Especially when the power is relatively low, the average estimate of the reject subset is higher. As power increases, the average of estimate gets closer to the true mean among the samples where the null hypothesis is rejected.
+
+* This indicates that when the effect size is relatively small, there are random chances that we will get a overestimate of the mean.
